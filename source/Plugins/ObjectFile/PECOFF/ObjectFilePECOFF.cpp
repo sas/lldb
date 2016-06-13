@@ -37,6 +37,7 @@
 #define OPT_HEADER_MAGIC_PE32 0x010b
 #define OPT_HEADER_MAGIC_PE32_PLUS 0x020b
 
+#define THUMB_ADDRESS_BIT_MASK 0xfffffffffffffffeull
 using namespace lldb;
 using namespace lldb_private;
 
@@ -633,6 +634,10 @@ Symtab *ObjectFilePECOFF::GetSymtab() {
 
         std::string symbol_name;
 
+        ArchSpec header_arch;
+        GetArchitecture(header_arch);
+        bool is_arm = header_arch.GetMachine() == llvm::Triple::arm;
+
         // Read each export table entry
         for (size_t i = 0; i < export_table.number_of_names; ++i) {
           uint32_t name_ordinal =
@@ -647,6 +652,12 @@ Symtab *ObjectFilePECOFF::GetSymtab() {
                                            data_start +
                                            sizeof(uint32_t) * name_ordinal;
           uint32_t function_rva = symtab_data.GetU32(&function_offset);
+
+          if (is_arm && function_rva & 1) {
+            // For Thumb we need the last bit to be 0 so that the address
+            // points to the right beginning of the symbol.
+            function_rva &= THUMB_ADDRESS_BIT_MASK;
+          }
 
           Address symbol_addr(m_coff_header_opt.image_base + function_rva,
                               sect_list);
