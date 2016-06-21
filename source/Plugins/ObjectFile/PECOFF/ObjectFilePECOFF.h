@@ -102,8 +102,7 @@ public:
 
   uint32_t GetAddressByteSize() const override;
 
-  //    virtual lldb_private::AddressClass
-  //    GetAddressClass (lldb::addr_t file_addr);
+  lldb::AddressClass GetAddressClass(lldb::addr_t file_addr) override;
 
   lldb_private::Symtab *GetSymtab() override;
 

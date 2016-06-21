@@ -678,6 +678,23 @@ bool ObjectFilePECOFF::IsStripped() {
   return false;
 }
 
+lldb::AddressClass ObjectFilePECOFF::GetAddressClass(lldb::addr_t file_addr) {
+  auto address_class = ObjectFile::GetAddressClass(file_addr);
+  // Some addresses (e.g. from trampolines) are marked as eAddressClassUnknown.
+  if (address_class == eAddressClassCode ||
+      address_class == eAddressClassUnknown) {
+    ArchSpec header_arch;
+    GetArchitecture(header_arch);
+    if (header_arch.GetMachine() == llvm::Triple::arm) {
+      // The only PECOFF/ARM target we support, Windows Phone, requires all
+      // user code to be Thumb, so we can always return
+      // eAddressClassCodeAlternateISA.
+      return eAddressClassCodeAlternateISA;
+    }
+  }
+  return address_class;
+}
+
 void ObjectFilePECOFF::CreateSections(SectionList &unified_section_list) {
   if (!m_sections_ap.get()) {
     m_sections_ap.reset(new SectionList());
